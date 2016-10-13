@@ -1,0 +1,5 @@
+modsec-sdbm-util
+
+Utility to manipulate SDBM files used by ModSecurity. With that utility it is possible to _shrink_ SDBM databases. It is also possible to list the SDBM contents with filters such as: expired or invalid items only.
+
+This can be found here: https://github.com/SpiderLabs/modsec-sdbm-util
