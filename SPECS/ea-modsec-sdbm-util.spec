@@ -16,7 +16,7 @@ Group:         Development/Tools
 Source:        %{name}-%{version}.tar.gz
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: ea-apr-devel >= 1.5.0, ea-apr-util-devel >= 1.2.0
-Requires:      ea-apr >= 1.5.0, mod_security2
+Requires:      ea-apr >= 1.5.0, ea-apache24-mod_security2
 
 %description
 Utility to manipulate SDBM files used by ModSecurity. With that utility it is
