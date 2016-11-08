@@ -6,7 +6,7 @@
 %define        release_prefix 1
 
 Name:          %{ns_name}-%{upstream_name}
-Version:       0.01
+Version:       0.02
 Release:       %{release_prefix}%{?dist}.cpanel
 License:       Apache 2.0
 Vendor:        cPanel, Inc.
@@ -44,5 +44,7 @@ rm -rf %{buildroot}
 %attr(0750,root,root) /usr/sbin/modsec-sdbm-util
 
 %changelog
+* Mon Nov 07 2016 Brett Estrade <brett@cpanel.net> 0.02-1
+- Updated source
 * Tue Oct 11 2016 Brett Estrade <brett@cpanel.net> 0.01-1
 - First Build
