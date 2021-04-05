@@ -4,8 +4,6 @@ source debian/vars.sh
 
 set -x
 
-cat -n autogen.sh
-
 sh autogen.sh
 ./configure \
     --with-apr=$ea_apr_dir \
