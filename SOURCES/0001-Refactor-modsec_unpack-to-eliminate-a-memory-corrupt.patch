@@ -1,0 +1,258 @@
+From eda22389ab8cfce213b1716110b08d544c7aa41d Mon Sep 17 00:00:00 2001
+From: Julian Brown <julian.brown@cpanel.net>
+Date: Fri, 19 Nov 2021 20:24:47 +0000
+Subject: [PATCH] Refactor modsec_unpack, to eliminate a memory corruption
+ error.
+
+NOTE: I never found the exact bug, I did find the line the error
+occurred on.  So I opted for an old scheme, use a buffer that is
+on the stack and be very careful with the length of the copies.
+---
+ modsec-sdbm-util.c   |  36 +++++++++--
+ test_copy/.gitignore |   1 +
+ test_copy/doit.sh    |   6 ++
+ test_copy/main.c     | 143 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 182 insertions(+), 4 deletions(-)
+ create mode 100644 test_copy/.gitignore
+ create mode 100755 test_copy/doit.sh
+ create mode 100644 test_copy/main.c
+
+diff --git a/modsec-sdbm-util.c b/modsec-sdbm-util.c
+index fd0b168..a44b955 100644
+--- a/modsec-sdbm-util.c
++++ b/modsec-sdbm-util.c
+@@ -91,6 +91,32 @@ ok_to_go:
+     return 0;
+ }
+ 
++static void copy_to_buffer_w_max (
++    char                *target,
++    int                 target_max,
++    const unsigned char *source,
++    int                 source_offset,
++    int                 source_max,
++    int                 len)
++{
++    int real_len;
++
++    if (source_offset >= source_max)
++        return;
++
++    real_len = len;
++    if ((source_max - source_offset) < len)
++        real_len = (source_max - source_offset) - 1;
++
++    if (real_len >= target_max)
++        real_len = target_max - 1;
++
++    memcpy (target, source + source_offset, real_len);
++    target [real_len] = 0;
++
++    return;
++}
++
+ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
+         unsigned int blob_size, int action)
+ {
+@@ -103,8 +129,9 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
+ 
+     while (blob_offset + 1 < blob_size)
+     {
+-        char *name;
+-        char *value;
++#define MAX_BUFFER  4096
++        char name [MAX_BUFFER];
++        char value [MAX_BUFFER];
+         int name_len;
+         int value_len;
+ 
+@@ -139,7 +166,7 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
+             return ret;
+         }
+ 
+-        name = strndup((const char *)blob + blob_offset, name_len - 1);
++        copy_to_buffer_w_max (name, MAX_BUFFER, blob, blob_offset, blob_size, name_len);
+         blob_offset += name_len;
+         name_len--;
+ 
+@@ -149,7 +176,8 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
+         {
+             return ret;
+         }
+-        value = strndup((const char *)blob + blob_offset, value_len - 1);
++
++        copy_to_buffer_w_max (value, MAX_BUFFER, blob, blob_offset, blob_size, value_len);
+ 
+         blob_offset += value_len;
+         value_len--;
+diff --git a/test_copy/.gitignore b/test_copy/.gitignore
+new file mode 100644
+index 0000000..ba2906d
+--- /dev/null
++++ b/test_copy/.gitignore
+@@ -0,0 +1 @@
++main
+diff --git a/test_copy/doit.sh b/test_copy/doit.sh
+new file mode 100755
+index 0000000..71427d9
+--- /dev/null
++++ b/test_copy/doit.sh
+@@ -0,0 +1,6 @@
++#!/bin/bash
++
++gcc -o main main.c
++
++./main
++
+diff --git a/test_copy/main.c b/test_copy/main.c
+new file mode 100644
+index 0000000..c0e98fe
+--- /dev/null
++++ b/test_copy/main.c
+@@ -0,0 +1,143 @@
++#include <stdio.h>
++#include <string.h>
++
++static void _xxd (const char *ptr, int len)
++{
++    int     i, j;
++    int     idx = 0;
++ 
++    static char    buffer [256];
++ 
++    for (i = 0; i < len; i += 16)
++    {  
++        buffer [0] = 0;
++        sprintf (&buffer[(int)strlen(buffer)], "%08x: ", idx);
++        for (j = 0; j < 16; j++)
++        {
++            idx = i + j;
++            if (idx >= len)
++            {  
++                sprintf (&buffer[(int)strlen(buffer)], "   ");
++            }
++            else
++            {  
++                int     x = ptr [idx] & 0xff;
++ 
++                sprintf (&buffer[(int)strlen(buffer)], "%02x ", x);
++            }
++        }  
++ 
++        sprintf (&buffer[(int)strlen(buffer)], " - ");
++        for (j = 0; j < 16; j++)
++        {
++            idx = i + j;
++            char c = ' ';
++            if (idx < len)
++            {  
++                c = ptr [idx];
++ 
++                if ((int)c < (int)0x20 || (int)c > (int)0x7F)
++                    c = '.';
++            }  
++            sprintf (&buffer[(int)strlen(buffer)], "%c", c);
++        }  
++ 
++        printf ("%s\n", buffer);
++    }  
++ 
++    return;
++}
++
++static void copy_to_buffer_w_max (
++    char                *target,
++    int                 target_max,
++    const unsigned char *source,
++    int                 source_offset,
++    int                 source_max,
++    int                 len)
++{
++    int real_len;
++
++    if (source_offset >= source_max)
++        return;
++
++    real_len = len;
++    if ((source_max - source_offset) < len)
++        real_len = (source_max - source_offset) - 1;
++
++    if (real_len >= target_max)
++        real_len = target_max - 1;
++
++    memcpy (target, source + source_offset, real_len);
++    target [real_len] = 0;
++
++    return;
++}
++
++void test_001 ()
++{
++    char    source [] = "0123456789";
++    char    target [1024];
++
++    copy_to_buffer_w_max (target, 1024, source, 0, strlen (source) + 1, strlen (source));
++   
++    printf ("TEST 001 Source\n");
++    _xxd (source, strlen (source) + 1);
++    printf ("Target\n");
++    _xxd (target, 128);
++
++}
++
++void test_002 ()
++{
++    char    source [] = "0123456789";
++    char    target [1024];
++
++    copy_to_buffer_w_max (target, 1024, source, 0, 5, strlen (source));
++   
++    printf ("TEST 002 Source\n");
++    _xxd (source, strlen (source) + 1);
++    printf ("Target\n");
++    _xxd (target, 128);
++
++}
++
++void test_003 ()
++{
++    char    source [] = "0123456789";
++    char    target [5];
++
++    copy_to_buffer_w_max (target, 5, source, 0, 5, strlen (source));
++   
++    printf ("TEST 003 Source\n");
++    _xxd (source, strlen (source) + 1);
++    printf ("Target\n");
++    _xxd (target, 128);
++
++}
++
++void test_004 ()
++{
++    char    source [] = "0123456789";
++    char    target [10];
++
++    copy_to_buffer_w_max (target, 10, source, 0, strlen (source) + 1, strlen (source));
++   
++    printf ("TEST 004 Source\n");
++    _xxd (source, strlen (source) + 1);
++    printf ("Target\n");
++    _xxd (target, 128);
++
++}
++int main (
++    int     argc,
++    char    **argv)
++{
++    test_001 ();
++    test_002 ();
++    test_003 ();
++    test_004 ();
++
++    return 0;
++}
++
+-- 
+2.31.1
+
