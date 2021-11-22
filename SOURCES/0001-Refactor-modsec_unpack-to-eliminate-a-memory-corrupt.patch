@@ -1,6 +1,6 @@
-From eda22389ab8cfce213b1716110b08d544c7aa41d Mon Sep 17 00:00:00 2001
+From 9041dcf890dc9cbc5267413c80c5f1e6aa319960 Mon Sep 17 00:00:00 2001
 From: Julian Brown <julian.brown@cpanel.net>
-Date: Fri, 19 Nov 2021 20:24:47 +0000
+Date: Mon, 22 Nov 2021 16:33:07 +0000
 Subject: [PATCH] Refactor modsec_unpack, to eliminate a memory corruption
  error.
 
@@ -8,20 +8,20 @@ NOTE: I never found the exact bug, I did find the line the error
 occurred on.  So I opted for an old scheme, use a buffer that is
 on the stack and be very careful with the length of the copies.
 ---
- modsec-sdbm-util.c   |  36 +++++++++--
+ modsec-sdbm-util.c   |  41 ++++++++++---
  test_copy/.gitignore |   1 +
  test_copy/doit.sh    |   6 ++
  test_copy/main.c     | 143 +++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 182 insertions(+), 4 deletions(-)
+ 4 files changed, 184 insertions(+), 7 deletions(-)
  create mode 100644 test_copy/.gitignore
  create mode 100755 test_copy/doit.sh
  create mode 100644 test_copy/main.c
 
 diff --git a/modsec-sdbm-util.c b/modsec-sdbm-util.c
-index fd0b168..a44b955 100644
+index fd0b168..c8431d3 100644
 --- a/modsec-sdbm-util.c
 +++ b/modsec-sdbm-util.c
-@@ -91,6 +91,32 @@ ok_to_go:
+@@ -91,23 +91,49 @@ ok_to_go:
      return 0;
  }
  
@@ -54,19 +54,29 @@ index fd0b168..a44b955 100644
  int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
          unsigned int blob_size, int action)
  {
-@@ -103,8 +129,9 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
+     unsigned int blob_offset;
+     int ret;
+ 
++#define MAX_BUFFER  4096
++    char name [MAX_BUFFER];
++    char value [MAX_BUFFER];
++    int name_len;
++    int value_len;
+ 
+     ret = 0;
+     blob_offset = 3;
  
      while (blob_offset + 1 < blob_size)
      {
 -        char *name;
 -        char *value;
-+#define MAX_BUFFER  4096
-+        char name [MAX_BUFFER];
-+        char value [MAX_BUFFER];
-         int name_len;
-         int value_len;
- 
-@@ -139,7 +166,7 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
+-        int name_len;
+-        int value_len;
+-
+         name_len = (blob[blob_offset] << 8) + blob[blob_offset + 1];
+         if (name_len == 0)
+         {
+@@ -139,7 +165,7 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
              return ret;
          }
  
@@ -75,7 +85,7 @@ index fd0b168..a44b955 100644
          blob_offset += name_len;
          name_len--;
  
-@@ -149,7 +176,8 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
+@@ -149,7 +175,8 @@ int modsec_unpack(apr_pool_t *pool, const unsigned char *blob,
          {
              return ret;
          }
