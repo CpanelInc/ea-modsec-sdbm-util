@@ -1,9 +1,11 @@
+%global debug_package %{nil}
+
 # Defining the package namespace
 %global ns_name ea
 %global upstream_name modsec-sdbm-util
 
 %define        debug_package %{nil}
-%define        release_prefix 2
+%define        release_prefix 3
 
 Name:          %{ns_name}-%{upstream_name}
 Version:       0.02
@@ -48,8 +50,12 @@ rm -rf %{buildroot}
 %attr(0750,root,root) /usr/sbin/modsec-sdbm-util
 
 %changelog
+* Thu Sep 29 2022 Julian Brown <julian.brown@cpanel.net> - 0.02-3
+- ZC-10009: Add changes so that it builds on AlmaLinux 9
+
 * Fri Nov 19 2021 Julian Brown <julian.brown@webpros.com> 0.02-2
 - Refactored a memory corruption error
+
 * Mon Nov 07 2016 Brett Estrade <brett@cpanel.net> 0.02-1
 - Updated source
 * Tue Oct 11 2016 Brett Estrade <brett@cpanel.net> 0.01-1
