@@ -1,11 +1,8 @@
-%global debug_package %{nil}
-
 # Defining the package namespace
 %global ns_name ea
 %global upstream_name modsec-sdbm-util
 
-%define        debug_package %{nil}
-%define        release_prefix 3
+%define        release_prefix 4
 
 Name:          %{ns_name}-%{upstream_name}
 Version:       0.02
@@ -50,6 +47,9 @@ rm -rf %{buildroot}
 %attr(0750,root,root) /usr/sbin/modsec-sdbm-util
 
 %changelog
+* Mon May 08 2023 Julian Brown <julian.brown@cpanel.net> - 0.02-4
+- ZC-10936: Clean up Makefile and remove debug-package-nil
+
 * Thu Sep 29 2022 Julian Brown <julian.brown@cpanel.net> - 0.02-3
 - ZC-10009: Add changes so that it builds on AlmaLinux 9
 
