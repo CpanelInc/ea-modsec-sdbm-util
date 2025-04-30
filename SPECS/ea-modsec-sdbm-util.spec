@@ -4,6 +4,11 @@
 
 %define        release_prefix 4
 
+%if 0%{?rhel} >= 10
+# https://docs.fedoraproject.org/en-US/packaging-guidelines/#_brp_buildroot_policy_scripts
+%global __brp_check_rpaths %{nil}
+%endif
+
 Name:          %{ns_name}-%{upstream_name}
 Version:       0.02
 Release:       %{release_prefix}%{?dist}.cpanel
