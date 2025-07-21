@@ -2,7 +2,7 @@
 %global ns_name ea
 %global upstream_name modsec-sdbm-util
 
-%define        release_prefix 4
+%define        release_prefix 5
 
 %if 0%{?rhel} >= 10
 # https://docs.fedoraproject.org/en-US/packaging-guidelines/#_brp_buildroot_policy_scripts
@@ -20,6 +20,9 @@ Group:         Development/Tools
 Source:        %{name}-%{version}.tar.gz
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: ea-apr-devel >= 1.5.0, ea-apr-util-devel >= 1.2.0
+BuildRequires: autoconf
+BuildRequires: automake
+BuildRequires: libtool
 Requires:      ea-apr >= 1.5.0, ea-apache24-mod_security2
 
 Patch01: 0001-Refactor-modsec_unpack-to-eliminate-a-memory-corrupt.patch
@@ -52,6 +55,9 @@ rm -rf %{buildroot}
 %attr(0750,root,root) /usr/sbin/modsec-sdbm-util
 
 %changelog
+* Mon Jul 21 2025 Travis Holloway <travis.holloway@webpros.com> - 0.02-5
+- CPANEL-48307: Add BuildRequires for autoconf, automake, and libtool
+
 * Mon May 08 2023 Julian Brown <julian.brown@cpanel.net> - 0.02-4
 - ZC-10936: Clean up Makefile and remove debug-package-nil
 
